@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import pandas as pd
-from datetime import datetime
+from datetime import date
 
 def get_los_toestel_prijs(url):
     resp = requests.get(url)
@@ -74,7 +74,7 @@ if 'Vodafone' in fees:
     fees['Vodafone'] = round(fees['Vodafone'] - 7.5, 2)
 
 # Data verzamelen per provider
-data = {'date': [datetime.today()], 'los_toestel': [los_prijs]}
+data = {'date': [date.today()], 'los_toestel': [los_prijs]}
 for p in providers:
     toestel = prijzen.get(p)
     abbo = fees.get(p)
@@ -90,7 +90,7 @@ df_new = pd.DataFrame(data)[cols]
 csv_path = "prijzen_s25_ultra.csv"
 try:
     df_old = pd.read_csv(csv_path, on_bad_lines='skip')
-    df_old = df_old[df_old['date'] != str(datetime.today())]
+    df_old = df_old[df_old['date'] != str(date.today())]
     df = pd.concat([df_old, df_new], ignore_index=True)
     df.to_csv(csv_path, index=False)
 except FileNotFoundError:
