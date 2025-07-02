@@ -49,7 +49,7 @@ try:
 except Exception as e:
     summary = f"Kon samenvatting niet maken: {e}"
 
-from_name = os.environ.get('FROM_NAME', 'Riks Mama').strip().replace('\n', '').replace('\r', '')
+from_name = os.environ.get('FROM_NAME', 'PriceCheckApp').strip().replace('\n', '').replace('\r', '')
 from_email = os.environ.get('FROM_EMAIL', '').strip().replace('\n', '').replace('\r', '')
 to_name = os.environ.get('TO_NAME', '').strip().replace('\n', '').replace('\r', '')
 to_email = os.environ.get('TO_EMAIL', '').strip().replace('\n', '').replace('\r', '')
