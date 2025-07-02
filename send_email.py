@@ -21,15 +21,10 @@ msg.set_content(f"Hieronder de actuele prijzen:\n\n{df_text}")
 with open(csv_path, 'rb') as f:
     msg.add_attachment(f.read(), maintype='text', subtype='csv', filename=os.path.basename(csv_path))
 
-# Outlook/Office365 SMTP settings
-smtp_server = 'smtp.office365.com'
-smtp_port = 587
+# Gmail SMTP settings
+smtp_server = 'smtp.gmail.com'
+smtp_port = 465
 
-with smtplib.SMTP(smtp_server, smtp_port) as smtp:
-    smtp.starttls()
-    try:
-        smtp.login(os.environ.get('SMTP_USER'), os.environ.get('SMTP_PASS'))
-    except smtplib.SMTPAuthenticationError as e:
-        print('SMTP login failed:', e)
-        raise
+with smtplib.SMTP_SSL(smtp_server, smtp_port) as smtp:
+    smtp.login(os.environ.get('SMTP_USER'), os.environ.get('SMTP_PASS'))
     smtp.send_message(msg)
