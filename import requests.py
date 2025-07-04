@@ -26,22 +26,34 @@ def get_provider_prices_and_fees(url):
     prijzen, fees = {}, {}
     for p in providers:
         label = f"Samsung Galaxy S25 Ultra + {p}"
-        le = soup.find(string=lambda t: t and label in t)
-        if le:
-            # Zoek prijs in de buurt van het label
-            prijs = None
-            for e in le.parent.next_elements:
-                if not isinstance(e, str):
-                    txt = e.get_text(strip=True) if hasattr(e, 'get_text') else ''
-                    m = re.search(r"\d{1,3}(?:\.\d{3})*(?:,\d{2})?", txt)
-                    if m:
+        # Zoek de juiste <tr> voor deze provider
+        tr = None
+        for row in soup.find_all("tr"):
+            first_td = row.find("td")
+            if first_td and label in first_td.get_text():
+                tr = row
+                break
+        toestelprijs = aanbetaling = None
+        if tr:
+            tds = tr.find_all("td")
+            if len(tds) >= 3:
+                def parse_price(td):
+                    span = td.find("span", class_="Price__Amount-sc-ecffd5cc-2")
+                    if span:
+                        txt = span.text.strip()
                         try:
-                            prijs = float(m.group().replace('.', '').replace(',', '.'))
-                            break
+                            return float(re.sub(r'[^\d,\.]', '', txt).replace('.', '').replace(',', '.'))
                         except Exception:
-                            pass
-            if prijs is not None:
-                prijzen[p] = prijs
+                            return None
+                    return None
+                toestelprijs = parse_price(tds[1])  # Dit is nu de totale toestelkosten
+                aanbetaling = parse_price(tds[2])
+                if toestelprijs is not None:
+                    prijzen[p] = toestelprijs  # GEEN aanbetaling meer optellen
+                if toestelprijs is not None:
+                    prijzen[f'{p}_toestelprijs'] = toestelprijs
+                if aanbetaling is not None:
+                    prijzen[f'{p}_aanbetaling'] = aanbetaling
         # Zoek maandelijkse fee
         img = soup.find('img', alt=p)
         if img:
@@ -78,18 +90,37 @@ data = {'date': [date.today()], 'los_toestel': [los_prijs]}
 for p in providers:
     toestel = prijzen.get(p)
     abbo = fees.get(p)
+    toestelprijs = prijzen.get(f'{p}_toestelprijs')
+    aanbetaling = prijzen.get(f'{p}_aanbetaling')
+    # abonnement_zonder_toestel = maandprijs - ((toestelprijs - aanbetaling) / 24)
+    abbo_zonder_toestel = None
+    if abbo is not None and toestelprijs is not None and aanbetaling is not None:
+        abbo_zonder_toestel = round(abbo - ((toestelprijs - aanbetaling) / 24), 2)
     data[f'{p}_toestel'] = [toestel]
     data[f'{p}_abonnement'] = [abbo]
-    data[f'{p}_abonnement_zonder_toestel'] = [round(abbo - toestel/24, 2) if toestel is not None and abbo is not None else None]
+    data[f'{p}_abonnement_zonder_toestel'] = [abbo_zonder_toestel]
+    data[f'{p}_toestelprijs'] = [toestelprijs]
+    data[f'{p}_aanbetaling'] = [aanbetaling]
 
 # Kolommen sorteren: eerst los_toestel, dan per provider alle waardes
-cols = ['date', 'los_toestel'] + [f'{p}_{s}' for p in providers for s in ['toestel','abonnement','abonnement_zonder_toestel']]
+cols = ['date', 'los_toestel'] + [f'{p}_{s}' for p in providers for s in ['toestel','abonnement','abonnement_zonder_toestel','toestelprijs','aanbetaling']]
 df_new = pd.DataFrame(data)[cols]
 
 # CSV bijwerken: overschrijf regel als datum bestaat, anders voeg toe
 csv_path = "prijzen_s25_ultra.csv"
 try:
     df_old = pd.read_csv(csv_path, on_bad_lines='skip')
+    # Voeg ontbrekende kolommen toe aan df_old
+    for col in df_new.columns:
+        if col not in df_old.columns:
+            df_old[col] = None
+    # Voeg ontbrekende kolommen toe aan df_new (voor oude kolommen die niet meer in df_new zitten)
+    for col in df_old.columns:
+        if col not in df_new.columns:
+            df_new[col] = None
+    # Zelfde volgorde
+    df_old = df_old[df_new.columns]
+    df_new = df_new[df_new.columns]
     df_old = df_old[df_old['date'] != str(date.today())]
     df = pd.concat([df_old, df_new], ignore_index=True)
     df.to_csv(csv_path, index=False)

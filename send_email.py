@@ -21,27 +21,33 @@ try:
     los_prijs = row['los_toestel']
     # Zoek alle kolommen die eindigen op '_toestel' en '_abonnement'
     abbo_cols = [c for c in df.columns if c.endswith('_toestel') or c.endswith('_abonnement')]
-    # Vind goedkoopste totaalprijs abonnement (toestel + 24*abonnement)
+    # Vind goedkoopste totaalprijs abonnement (24*abonnement + aanbetaling)
     min_total = None
     min_provider = None
     min_abbo = None
     min_toestel = None
+    min_aanbetaling = None
     for p in set(c.split('_')[0] for c in abbo_cols if '_toestel' in c):
         toestel = row.get(f'{p}_toestel')
         abbo = row.get(f'{p}_abonnement')
-        if pd.notnull(toestel) and pd.notnull(abbo):
-            total = toestel + 24 * abbo
+        aanbetaling = row.get(f'{p}_aanbetaling')
+        if pd.notnull(abbo) and pd.notnull(aanbetaling):
+            total = 24 * abbo + aanbetaling
             if min_total is None or total < min_total:
                 min_total = total
                 min_provider = p
                 min_abbo = abbo
                 min_toestel = toestel
+                min_aanbetaling = aanbetaling
     if min_total is not None:
+        # Haal de toestelprijs van de goedkoopste provider op
+        min_provider_toestelprijs = row.get(f"{min_provider}_toestelprijs")
         summary = (
             f"Datum: {today}\n"
             f"Los toestel prijs: €{los_prijs:.2f}\n"
-            f"Goedkoopste abonnement totaal (toestel + 24x abbo): €{min_total:.2f} bij {min_provider}\n"
-            f"Toestelprijs bij goedkoopste provider: €{min_toestel:.2f}\n"
+            f"Goedkoopste abonnement totaal (24x abbo + aanbetaling): €{min_total:.2f} bij {min_provider}\n"
+            f"Toestelprijs bij goedkoopste provider: €{min_provider_toestelprijs:.2f}\n"
+            f"Eenmalige aanbetaling bij goedkoopste provider: €{min_aanbetaling:.2f}\n"
             f"Maandprijs goedkoopste abonnement: €{min_abbo:.2f}"
         )
     else:

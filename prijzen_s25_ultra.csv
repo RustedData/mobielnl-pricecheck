@@ -1,4 +1,4 @@
-date,los_toestel,KPN_toestel,KPN_abonnement,KPN_abonnement_zonder_toestel,Odido_toestel,Odido_abonnement,Odido_abonnement_zonder_toestel,Vodafone_toestel,Vodafone_abonnement,Vodafone_abonnement_zonder_toestel
-2025-07-02,1231.0,960.0,66.5,26.5,912.0,65.5,27.5,960.0,62.5,22.5
-2025-07-03,1219.0,960.0,66.5,26.5,912.0,65.5,27.5,960.0,62.5,22.5
-2025-07-04,1219.0,960.0,66.5,26.5,912.0,65.5,27.5,960.0,62.5,22.5
+date,los_toestel,KPN_toestel,KPN_abonnement,KPN_abonnement_zonder_toestel,KPN_toestelprijs,KPN_aanbetaling,Odido_toestel,Odido_abonnement,Odido_abonnement_zonder_toestel,Odido_toestelprijs,Odido_aanbetaling,Vodafone_toestel,Vodafone_abonnement,Vodafone_abonnement_zonder_toestel,Vodafone_toestelprijs,Vodafone_aanbetaling
+2025-07-02,1231.0,960.0,66.5,26.5,,,912.0,65.5,27.5,,,960.0,62.5,22.5,,
+2025-07-03,1219.0,960.0,66.5,26.5,,,912.0,65.5,27.5,,,960.0,62.5,22.5,,
+2025-07-04,1219.0,1122.0,67.5,26.5,1122.0,138.0,1032.0,69.0,27.5,1032.0,36.0,1052.0,62.5,22.5,1052.0,92.0
