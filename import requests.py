@@ -74,57 +74,107 @@ def get_provider_prices_and_fees(url):
                     break
     return providers, prijzen, fees
 
-# Prijzen ophalen
-los_url = "https://www.mobiel.nl/smartphone/samsung/galaxy-s25-ultra/512gb-titanium-black"
-abonnement_url = "https://www.mobiel.nl/smartphone/samsung/galaxy-s25-ultra/met-abonnement?kleur=titanium-black&opslagcapaciteit=512gb&data=2147483647-&minuten=100-&bijbetaling=-700&sorteren=meest-voordelig"
+def build_abonnement_urls():
+    base_url = "https://www.mobiel.nl/smartphone/samsung/galaxy-s25-ultra/met-abonnement"
+    kleuren = [
+        "titanium-black",
+        "titanium-silver-blue",
+        "titanium-gray",
+        "titanium-white-silver"
+    ]
+    opslag_varianten = ["512gb", "256gb"]
+    urls = []
+    for kleur in kleuren:
+        for opslag in opslag_varianten:
+            url = (
+                f"{base_url}?kleur={kleur}&opslagcapaciteit={opslag}"
+                f"&data=2147483647-&minuten=2147483647-&bijbetaling=-700&sorteren=meest-voordelig"
+            )
+            urls.append({"url": url, "kleur": kleur, "opslag": opslag})
+    return urls
 
-los_prijs = get_los_toestel_prijs(los_url)
-providers, prijzen, fees = get_provider_prices_and_fees(abonnement_url)
+# --- Abonnement URLS ---
+abonnement_urls = build_abonnement_urls()
 
-# Vodafone klantkorting toepassen
-if 'Vodafone' in fees:
-    fees['Vodafone'] = round(fees['Vodafone'] - 7.5, 2)
+# Los toestel prijzen ophalen voor 512GB en 256GB
+los_url_512 = "https://www.mobiel.nl/smartphone/samsung/galaxy-s25-ultra/512gb-titanium-black"
+los_url_256 = "https://www.mobiel.nl/smartphone/samsung/galaxy-s25-ultra/256gb-titanium-black"
+los_prijs_512 = get_los_toestel_prijs(los_url_512)
+los_prijs_256 = get_los_toestel_prijs(los_url_256)
 
-# Data verzamelen per provider
-data = {'date': [date.today()], 'los_toestel': [los_prijs]}
-for p in providers:
-    toestel = prijzen.get(p)
-    abbo = fees.get(p)
-    toestelprijs = prijzen.get(f'{p}_toestelprijs')
-    aanbetaling = prijzen.get(f'{p}_aanbetaling')
-    # abonnement_zonder_toestel = maandprijs - ((toestelprijs - aanbetaling) / 24)
-    abbo_zonder_toestel = None
-    if abbo is not None and toestelprijs is not None and aanbetaling is not None:
-        abbo_zonder_toestel = round(abbo - ((toestelprijs - aanbetaling) / 24), 2)
-    data[f'{p}_toestel'] = [toestel]
-    data[f'{p}_abonnement'] = [abbo]
-    data[f'{p}_abonnement_zonder_toestel'] = [abbo_zonder_toestel]
-    data[f'{p}_toestelprijs'] = [toestelprijs]
-    data[f'{p}_aanbetaling'] = [aanbetaling]
+all_rows = []
 
-# Kolommen sorteren: eerst los_toestel, dan per provider alle waardes
-cols = ['date', 'los_toestel'] + [f'{p}_{s}' for p in providers for s in ['toestel','abonnement','abonnement_zonder_toestel','toestelprijs','aanbetaling']]
-df_new = pd.DataFrame(data)[cols]
+for abbo_info in abonnement_urls:
+    url = abbo_info["url"]
+    kleur = abbo_info["kleur"]
+    opslag = abbo_info["opslag"]
+    providers, prijzen, fees = get_provider_prices_and_fees(url)
+    # Vodafone klantkorting toepassen
+    if 'Vodafone' in fees:
+        fees['Vodafone'] = round(fees['Vodafone'] - 7.5, 2)
+    # Kies juiste los toestel prijs per opslag
+    if opslag == "512gb":
+        los_prijs = los_prijs_512
+    elif opslag == "256gb":
+        los_prijs = los_prijs_256
+    else:
+        los_prijs = None
+    for p in providers:
+        toestelprijs = prijzen.get(f'{p}_toestelprijs')
+        aanbetaling = prijzen.get(f'{p}_aanbetaling')
+        abbo = fees.get(p)
+        abbo_zonder_toestel = None
+        kredietbedrag = None
+        if toestelprijs is not None and aanbetaling is not None:
+            kredietbedrag = toestelprijs - aanbetaling
+        if abbo is not None and toestelprijs is not None and aanbetaling is not None:
+            abbo_zonder_toestel = round(abbo - ((toestelprijs - aanbetaling) / 24), 2)
+        row = {
+            'date': date.today(),
+            'kleur': kleur,
+            'opslag': opslag,
+            'provider': p,
+            'los_toestel': los_prijs,
+            'kredietbedrag': kredietbedrag,
+            'abonnement': abbo,
+            'abonnement_zonder_toestel': abbo_zonder_toestel,
+            'toestelprijs': toestelprijs,
+            'aanbetaling': aanbetaling
+        }
+        all_rows.append(row)
 
-# CSV bijwerken: overschrijf regel als datum bestaat, anders voeg toe
-csv_path = "prijzen_s25_ultra.csv"
-try:
-    df_old = pd.read_csv(csv_path, on_bad_lines='skip')
-    # Voeg ontbrekende kolommen toe aan df_old
-    for col in df_new.columns:
-        if col not in df_old.columns:
-            df_old[col] = None
-    # Voeg ontbrekende kolommen toe aan df_new (voor oude kolommen die niet meer in df_new zitten)
-    for col in df_old.columns:
-        if col not in df_new.columns:
-            df_new[col] = None
-    # Zelfde volgorde
-    df_old = df_old[df_new.columns]
-    df_new = df_new[df_new.columns]
-    df_old = df_old[df_old['date'] != str(date.today())]
-    df = pd.concat([df_old, df_new], ignore_index=True)
-    df.to_csv(csv_path, index=False)
-except FileNotFoundError:
-    df = df_new
-    df.to_csv(csv_path, index=False)
+# DataFrame van alle rows
+if all_rows:
+    df_new = pd.DataFrame(all_rows)
+    csv_path = "prijzen_s25_ultra.csv"
+    # Houd alleen unieke rijen per dag, provider, kleur, opslag
+    df_new.sort_values(['date', 'provider', 'kleur', 'opslag', 'abonnement'], inplace=True)
+    df_new = df_new.drop_duplicates(subset=['date', 'provider', 'kleur', 'opslag'], keep='first')
+    try:
+        df_old = pd.read_csv(csv_path, on_bad_lines='skip')
+        # Voeg ontbrekende kolommen toe aan df_old
+        for col in df_new.columns:
+            if col not in df_old.columns:
+                df_old[col] = None
+        for col in df_old.columns:
+            if col not in df_new.columns:
+                df_new[col] = None
+        df_old = df_old[df_new.columns]
+        df_new = df_new[df_new.columns]
+        df = pd.concat([df_old, df_new], ignore_index=True)
+        # Forceer consistente types voor alle kolommen
+        df['date'] = df['date'].astype(str)
+        df['kleur'] = df['kleur'].astype(str)
+        df['opslag'] = df['opslag'].astype(str)
+        df['provider'] = df['provider'].astype(str)
+        for col in ['los_toestel', 'kredietbedrag', 'abonnement', 'abonnement_zonder_toestel', 'toestelprijs', 'aanbetaling']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        # Verwijder dubbele rijen op date, provider, kleur, opslag
+        df = df.drop_duplicates(subset=['date', 'provider', 'kleur', 'opslag'], keep='first')
+        # Verwijder exacte dubbele rijen (alle kolommen gelijk)
+        df = df.drop_duplicates(keep='first')
+        df.to_csv(csv_path, index=False)
+    except FileNotFoundError:
+        df_new.to_csv(csv_path, index=False)
 
