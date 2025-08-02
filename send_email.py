@@ -68,7 +68,8 @@ def main():
         summary = build_summary(los_prijs, cheapest_256_row, cheapest_512_row, today)
     except Exception as e:
         summary = f"Kon samenvatting niet maken: {e}"
-    send_email(summary, csv_path)
+    # send_email(summary, csv_path)  # Email is gedeactiveerd
+    print(summary)
 
 if __name__ == '__main__':
     main()
